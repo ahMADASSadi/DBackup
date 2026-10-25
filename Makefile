@@ -1,9 +1,15 @@
 COMPOSE = docker compose --env-file .env -f deployments/docker-compose.yml
 
-.PHONY: up down logs test test-integration frontend-test build key
+.PHONY: up down logs test test-integration frontend-test build key pull up-remote
 
 up:
 	$(COMPOSE) up -d --build
+
+pull:
+	$(COMPOSE) pull backend frontend
+
+up-remote:
+	$(COMPOSE) up -d --pull always --no-build
 
 down:
 	$(COMPOSE) down

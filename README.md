@@ -27,6 +27,24 @@ make up
 
 Open `http://127.0.0.1:8080`. Caddy is bound to loopback. The backend and frontend ports are not published.
 
+Published images live on GitHub Container Registry. After they exist, start from those images instead of building locally:
+
+```sh
+make pull
+make up-remote
+```
+
+`make up` still builds from this checkout. Images:
+
+- `ghcr.io/ahmadassadi/dbackup-backend:latest`
+- `ghcr.io/ahmadassadi/dbackup-frontend:latest`
+
+If the repository or the packages are private, log in once before pulling:
+
+```sh
+docker login ghcr.io -u ahMADASSadi
+```
+
 `make down` stops the containers and keeps the `dbackup-data` volume. Do not use `down -v` unless you intend to delete backups and metadata.
 
 For a local MinIO service used only as an upload target:
