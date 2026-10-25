@@ -1,0 +1,127 @@
+# Example: run DBackup as services inside another Compose project.
+#
+# Copy this next to your app's compose file (or merge the dbackup-* services),
+# copy env.dbackup.example → .env.dbackup, then:
+#
+#   docker compose -f docker-compose.embed.yml --env-file .env.dbackup up -d
+#
+# Panel: http://127.0.0.1:8080  (change DBACKUP_HTTP_PORT if needed)
+#
+# ── Connecting sources from the UI ──────────────────────────────────────────
+# Same Compose network (recommended):
+#   Host = service name, e.g. postgres / mysql
+#   Port = container port (5432 / 3306), NOT a published host port
+#   TLS  = disable   (typical for private Docker networks without certs)
+#
+# Database on the Docker host (Postgres/MySQL installed on the machine):
+#   Host = host.docker.internal
+#   Port = the host listen port (e.g. 5432)
+#   TLS  = disable or require, matching the server
+#   Linux needs extra_hosts below (already set on dbackup-backend).
+#
+# Database in a different Compose project:
+#   1) Put that project's network name under networks.shared.external below
+#   2) Attach dbackup-backend (and that DB) to shared
+#   3) Host = that service's Compose service name
+#
+# Do NOT use localhost / 127.0.0.1 from inside DBackup — that is the
+# backup container itself, not your database.
+#
+# Optional env DB_HOST_ALLOWLIST: if set, every source host must match
+# (hostname or CIDR). Empty = allow any non–link-local host.
+#
+# SQLite: mount the file directory read-only and set path under
+# SQLITE_ALLOWED_ROOTS (default /sqlite-sources/...).
+#
+# PostgreSQL dump client: image ships clients for majors ≤ PG_MAJOR (default 18).
+# Server major must be ≤ that client major.
+
+name: dbackup-embed-example
+
+services:
+  # --- sample databases your app might already define --------------------
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: app
+  #     POSTGRES_PASSWORD: app
+  #     POSTGRES_DB: app
+  #   volumes:
+  #     - example-pg-data:/var/lib/postgresql/data
+  #   networks: [app]
+  #   # In DBackup UI → Host: postgres  Port: 5432  User/DB: app  TLS: disable
+
+  # mysql:
+  #   image: mysql:8.4
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: app
+  #     MYSQL_USER: app
+  #     MYSQL_PASSWORD: app
+  #   volumes:
+  #     - example-mysql-data:/var/lib/mysql
+  #   networks: [app]
+    # In DBackup UI → Host: mysql  Port: 3306  User/DB: app  TLS: disable
+
+  # --- DBackup -----------------------------------------------------------
+  dbackup-caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DBACKUP_HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [app]
+    depends_on:
+      dbackup-backend:
+        condition: service_healthy
+      dbackup-frontend:
+        condition: service_healthy
+
+  dbackup-backend:
+    image: ghcr.io/ahmadassadi/dbackup-backend:${DBACKUP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env.dbackup
+    environment:
+      # Reach processes bound on the Docker host (Linux).
+      # macOS/Windows Docker Desktop already provides host.docker.internal.
+      HTTP_ADDR: ":8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - dbackup-data:/data
+      # Optional: host dir with SQLite files to back up
+      - ${SQLITE_SOURCES_PATH:-./sqlite-sources}:/sqlite-sources:ro
+    networks: [app]
+    # To join another project's network instead of (or in addition to) app:
+    #   networks: [app, shared]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/dbackup", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+      start_period: 15s
+
+  dbackup-frontend:
+    image: ghcr.io/ahmadassadi/dbackup-frontend:${DBACKUP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+networks:
+  app:
+    name: dbackup-embed-app
+  # Uncomment to attach to an existing project network:
+  # shared:
+  #   external: true
+  #   name: myotherproject_default
+
+volumes:
+  dbackup-data:
+  example-pg-data:
+  example-mysql-data:

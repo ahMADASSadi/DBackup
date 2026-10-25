@@ -1,0 +1,16 @@
+:8080 {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy dbackup-backend:8080
+	}
+	handle {
+		reverse_proxy dbackup-frontend:3000
+	}
+}
