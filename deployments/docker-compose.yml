@@ -1,0 +1,62 @@
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [edge]
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ../apps/backend
+    restart: unless-stopped
+    env_file: ../.env
+    volumes:
+      - dbackup-data:/data
+      - ${SQLITE_SOURCES_PATH:-../sqlite-sources}:/sqlite-sources:ro
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/dbackup", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ../apps/frontend
+    restart: unless-stopped
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  minio:
+    profiles: ["s3"]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks: [edge]
+
+networks:
+  edge:
+    name: dbackup-edge
+
+volumes:
+  dbackup-data:
+  minio-data:

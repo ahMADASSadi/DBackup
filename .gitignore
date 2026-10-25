@@ -1,0 +1,14 @@
+.env
+data/**
+!data/.gitkeep
+sqlite-sources/**
+!sqlite-sources/.gitkeep
+node_modules/
+.nuxt/
+.output/
+dist/
+*.db
+*.db-wal
+*.db-shm
+apps/backend/dbackup
+.DS_Store
