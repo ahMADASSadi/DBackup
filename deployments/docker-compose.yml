@@ -17,6 +17,8 @@ services:
     image: ghcr.io/ahmadassadi/dbackup-backend:${DBACKUP_IMAGE_TAG:-latest}
     build:
       context: ../apps/backend
+      args:
+        PG_MAJOR: ${PG_MAJOR:-18}
     restart: unless-stopped
     env_file: ../.env
     volumes:

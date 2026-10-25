@@ -51,7 +51,7 @@ To rotate database or S3 secrets, submit the new secret in the existing form. A 
 3. `make up` rebuilds the images and runs migrations on startup.
 4. Confirm `GET /api/v1/health` and a test backup.
 
-The backend image is based on `postgres:17-bookworm` and installs Debian's MySQL client. `pg_dump` 17 can dump PostgreSQL 17 and older servers. For a newer major version, change the runtime image tag to a matching PostgreSQL client, rebuild, and rerun `make test-integration`.
+The backend image is based on `postgres:${PG_MAJOR}-bookworm` (default `18`) and also installs PostgreSQL clients 15–17. At dump time the app reads `server_version_num` and picks a `pg_dump` that is at least that major. When you need to dump PostgreSQL 19+, set `PG_MAJOR=19` in `.env`, rebuild (`make up`), and rerun `make test-integration`.
 
 ## Clean install and recreation
 

@@ -29,7 +29,7 @@ Only one active backup is allowed per source. The global concurrency limit is th
 
 ## Dump formats
 
-PostgreSQL uses `pg_dump --format=custom`. The file is compressed and restored with `pg_restore`. It is not plain SQL, and the client major version must be at least the server major version. The image ships the PostgreSQL 17 client.
+PostgreSQL uses `pg_dump --format=custom`. The file is compressed and restored with `pg_restore`. It is not plain SQL, and the client major version must be at least the server major version. The image ships the PostgreSQL 18 client.
 
 MySQL uses `mysqldump` with `--single-transaction`, routines, triggers, and hex blobs. The result is plain SQL for one database and is restored with the `mysql` client. Credentials are passed in a `0600` defaults file, not on the command line.
 

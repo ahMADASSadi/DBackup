@@ -61,13 +61,21 @@ type fakeCall struct {
 	env  []string
 }
 
-func (f *fakeRunner) LookPath(file string) (string, error) { return "/usr/bin/" + file, nil }
+func (f *fakeRunner) LookPath(file string) (string, error) {
+	if strings.Contains(file, "/") {
+		return file, nil
+	}
+	return "/usr/bin/" + file, nil
+}
 
 func (f *fakeRunner) Run(_ context.Context, name string, args []string, env []string) (Result, error) {
 	f.calls = append(f.calls, fakeCall{name: name, args: append([]string(nil), args...), env: append([]string(nil), env...)})
 	joined := strings.Join(args, "\n")
+	if name == "psql" || strings.HasSuffix(name, "/psql") {
+		return Result{Stdout: "170000\n"}, nil
+	}
 	if strings.Contains(joined, "--version") {
-		if name == "pg_dump" {
+		if strings.Contains(name, "pg_dump") {
 			return Result{Stdout: "pg_dump (PostgreSQL) 17.0\n"}, nil
 		}
 		return Result{Stdout: "mysqldump  Ver 10.19 Distrib 10.11.6-MariaDB\n"}, nil
@@ -113,13 +121,21 @@ func TestDumpDoesNotPassSecretsToShell(t *testing.T) {
 	if _, err := engine.Dump(context.Background(), source, "db-secret", dest, t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
-	if len(runner.calls) == 0 || runner.calls[0].name != "pg_dump" {
-		t.Fatalf("calls %+v", runner.calls)
-	}
+	var dumped bool
 	for _, call := range runner.calls {
 		if call.name == "sh" || call.name == "bash" {
 			t.Fatal("used a shell")
 		}
+		if strings.Contains(call.name, "pg_dump") {
+			for _, arg := range call.args {
+				if arg == "--format=custom" {
+					dumped = true
+				}
+			}
+		}
+	}
+	if !dumped {
+		t.Fatalf("pg_dump was not invoked: %+v", runner.calls)
 	}
 	hostile := source
 	hostile.Config.Host = "127.0.0.1;touch"

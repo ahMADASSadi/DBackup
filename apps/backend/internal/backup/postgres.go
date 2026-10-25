@@ -13,14 +13,14 @@ import (
 )
 
 func dumpPostgres(ctx context.Context, runner Runner, credDir string, cfg model.ConnConfig, password, dest string) (string, error) {
-	if _, err := runner.LookPath("pg_dump"); err != nil {
-		return "", toolMissing("pg_dump")
-	}
-	versionOut, err := runner.Run(ctx, "pg_dump", []string{"--version"}, nil)
+	serverMajor, err := postgresServerMajor(ctx, runner, credDir, cfg, password)
 	if err != nil {
-		return "", fmt.Errorf("pg_dump --version failed: %s", security.Truncate(security.Redact(versionOut.Stderr, password), 300))
+		return "", err
 	}
-	version := firstLine(versionOut.Stdout)
+	bin, version, err := selectPgDump(ctx, runner, serverMajor)
+	if err != nil {
+		return "", err
+	}
 	passFile, err := writePgpass(credDir, cfg, password)
 	if err != nil {
 		return "", err
@@ -48,7 +48,7 @@ func dumpPostgres(ctx context.Context, runner Runner, credDir string, cfg model.
 		}
 		env = append(env, "PGSSLROOTCERT="+caPath)
 	}
-	result, err := runner.Run(ctx, "pg_dump", args, env)
+	result, err := runner.Run(ctx, bin, args, env)
 	if err != nil {
 		detail := security.Truncate(security.Redact(strings.TrimSpace(result.Stderr+" "+result.Stdout), password), 400)
 		if detail == "" {
