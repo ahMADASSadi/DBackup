@@ -1,5 +1,6 @@
 <template>
   <div class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
     <p class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-400">DBackup</p>
     <h1 class="mt-2 text-2xl font-semibold">Sign in</h1>
     <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">One administrator, provisioned by deployment configuration.</p>
@@ -13,6 +14,7 @@
       </label>
       <button type="submit" class="w-full rounded-md bg-emerald-700 px-3 py-2 text-sm text-white disabled:opacity-60" :disabled="pending">{{ pending ? 'Signing in…' : 'Sign in' }}</button>
     </form>
+    </div>
   </div>
 </template>
 
