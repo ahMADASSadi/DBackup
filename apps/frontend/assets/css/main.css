@@ -2,16 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-.dark { color-scheme: dark; }
+:root {
+  color-scheme: light;
+  --p-50: 236 253 245;
+  --p-100: 209 250 229;
+  --p-200: 167 243 208;
+  --p-300: 110 231 183;
+  --p-400: 52 211 153;
+  --p-500: 16 185 129;
+  --p-600: 5 150 105;
+  --p-700: 4 120 87;
+  --p-800: 6 95 70;
+  --p-900: 6 78 59;
+  --p-950: 2 44 34;
+}
+.dark {
+  color-scheme: dark;
+}
 
 body {
   @apply bg-zinc-100 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
 }
 
-button, input, select, textarea { font: inherit; }
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
 
 :focus-visible {
-  outline: 2px solid rgb(5 150 105);
+  outline: 2px solid rgb(var(--p-600));
   outline-offset: 2px;
 }
