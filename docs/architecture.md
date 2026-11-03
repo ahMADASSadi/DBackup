@@ -35,6 +35,8 @@ MySQL uses `mysqldump` with `--single-transaction`, routines, triggers, and hex 
 
 SQLite uses the driver's online backup API, which copies a consistent snapshot, including WAL pages. The result is a restorable database file.
 
+Before publication, every dump is gzip-compressed and encrypted with the administrator password. The stored file ends in `.dbk`. The password is held only in process memory. See `docs/operations.md`.
+
 ## Metadata
 
 The metadata database is separate from every source. It uses WAL, `busy_timeout=5000`, foreign keys, and a single writer connection. Schema changes are embedded SQL files applied once.

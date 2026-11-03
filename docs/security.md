@@ -26,7 +26,7 @@ DBackup can read configured databases and write those dumps to disk or object st
 - Give database accounts only the rights needed to dump. PostgreSQL needs `CONNECT` and read access. MySQL needs `SELECT`, `SHOW VIEW`, and usually `TRIGGER`/`LOCK TABLES` depending on the engine. Do not use a superuser.
 - Give the object-storage key access only to the configured bucket and prefix.
 - Mount SQLite source directories read-only.
-- Keep the backup volume and the encryption key in separate backups. Losing the key makes stored database passwords and S3 keys unreadable. The backup files themselves are not encrypted by the application.
+- Keep the backup volume and the encryption key in separate backups. Losing the key makes stored database passwords and S3 keys unreadable. New backup files are encrypted with the administrator password. That password is held only in process memory after login or unlock, and it is wiped on logout, password change, session expiry, and restart. Losing it makes those files unreadable. Backups created before this protection are still plaintext.
 - Run `make test` and review `govulncheck` and `npm audit` before upgrading.
 
 ## Limitations
@@ -43,4 +43,4 @@ A lost `APP_ENCRYPTION_KEY` cannot be recovered from the metadata database. Rota
 
 `govulncheck` against Go 1.26.2 reports vulnerabilities in the standard library (`net/http`, `crypto/tls`, `crypto/x509`). They are fixed only by a newer Go toolchain, not by an application dependency bump. Rebuild the backend image when a patched `golang` and `postgres` base tag is available. `npm audit` reports upstream Nuxt 3 and Nitro issues, including `node-forge` through the Nuxt CLI listener. The panel does not use that code for password hashing or backup encryption. Stay on Nuxt 3 as specified, and move to a patched 3.x release when one is published.
 
-The panel does not scan backup contents for malware and does not encrypt backup files at rest. Protect the volume with disk encryption if the dumps are sensitive.
+The panel does not scan backup contents for malware. New backup files are encrypted with the administrator password, but the password stays in process memory while a session is active. A restart leaves stored sessions valid and backups paused until the password is entered again. Changing the password does not re-encrypt older files. Protect the volume with disk encryption as well if the dumps are sensitive.

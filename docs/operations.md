@@ -2,7 +2,15 @@
 
 ## Restore a backup
 
-Download the file from the backup history, or copy it from the backup volume. Paths inside the volume look like `/data/backups/<source-id>/<backup-id>.dump`.
+New backups are stored as gzip-compressed files encrypted with the administrator password that was in memory when the dump finished. Download keeps that sealed `.dbk` file. Backups created before this protection still use `.dump`, `.sql`, or `.db` and can be restored directly.
+
+Decrypt a new file outside the panel. The password is the administrator password from the time of that backup, read from the terminal and not from an argument:
+
+```sh
+docker compose --env-file .env -f deployments/docker-compose.yml exec backend decrypt -in /data/backups/<source-id>/<backup-id>.dbk -out /tmp/backup.dump
+```
+
+`decrypt` writes the original dump, already uncompressed. Restore that file. If the administrator password was changed after the backup, use the password from the time of the backup.
 
 PostgreSQL custom format:
 
@@ -26,7 +34,7 @@ Stop writers, then replace the database file with the snapshot, or open the snap
 
 ## Interrupted jobs
 
-On startup, backups and uploads left in `running` are marked `failed` and temporary files are deleted. Pending backups are picked up again. Use Retry for a failed dump that has no file, and Retry upload for a completed file whose upload failed. A failed upload does not delete the local file.
+On startup, backups and uploads left in `running` are marked `failed` and temporary files are deleted. Pending backups are picked up again once backup encryption is unlocked. Until an administrator logs in or unlocks the panel, new backups stay pending. Use Retry for a failed dump that has no file, and Retry upload for a completed file whose upload failed. A failed upload does not delete the local file.
 
 ## Retention
 
@@ -40,7 +48,7 @@ If the encryption key is lost, source passwords and S3 keys cannot be decrypted.
 
 ## Credential rotation
 
-Change the administrator password in Settings. That invalidates sessions. To reset a forgotten password, set `ADMIN_PASSWORD` to the new value and `ADMIN_PASSWORD_RESET=true`, start the container once, then set the flag back to `false`.
+Change the administrator password in Settings. That invalidates sessions and does not re-encrypt existing backups. To reset a forgotten password, set `ADMIN_PASSWORD` to the new value and `ADMIN_PASSWORD_RESET=true`, start the container once, then set the flag back to `false`. Files encrypted with the forgotten password cannot be opened.
 
 To rotate database or S3 secrets, submit the new secret in the existing form. A blank secret field keeps the stored value.
 

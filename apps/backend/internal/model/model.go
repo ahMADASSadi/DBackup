@@ -168,7 +168,10 @@ type BackupPage struct {
 	Offset int      `json:"offset"`
 }
 
-// Extension returns the published filename suffix for a database type.
+// EncryptedExt is the published suffix after gzip and encryption.
+const EncryptedExt = ".dbk"
+
+// Extension returns the dump suffix before compression and encryption.
 func Extension(dbType string) string {
 	switch dbType {
 	case TypePostgres:

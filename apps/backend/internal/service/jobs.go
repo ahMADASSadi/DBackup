@@ -7,6 +7,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,15 +31,18 @@ type Jobs struct {
 	HardLimit     int
 	Timeout       time.Duration
 	AllowInsecure bool
+	Vault         *security.Vault
 
-	wake   chan struct{}
-	root   context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	wake     chan struct{}
+	root     context.Context
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	lockMu   sync.Mutex
+	lockNote time.Time
 }
 
 // NewJobs builds the worker. Call Start before serving traffic.
-func NewJobs(store *repository.Store, engine *backup.Engine, files *storage.Local, objects storage.S3, cipher *security.Cipher, log *slog.Logger, hardLimit int, timeout time.Duration, allowInsecure bool) *Jobs {
+func NewJobs(store *repository.Store, engine *backup.Engine, files *storage.Local, objects storage.S3, cipher *security.Cipher, log *slog.Logger, hardLimit int, timeout time.Duration, allowInsecure bool, vault *security.Vault) *Jobs {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -47,9 +52,12 @@ func NewJobs(store *repository.Store, engine *backup.Engine, files *storage.Loca
 	if timeout < time.Minute {
 		timeout = 2 * time.Hour
 	}
+	if vault == nil {
+		vault = security.NewVault()
+	}
 	return &Jobs{
 		Store: store, Engine: engine, Files: files, Objects: objects, Cipher: cipher, Log: log,
-		HardLimit: hardLimit, Timeout: timeout, AllowInsecure: allowInsecure,
+		HardLimit: hardLimit, Timeout: timeout, AllowInsecure: allowInsecure, Vault: vault,
 		wake: make(chan struct{}, 1),
 	}
 }
@@ -269,7 +277,15 @@ func (j *Jobs) Open(ctx context.Context, id string) (Download, error) {
 	if err != nil {
 		return Download{}, E(404, "not_found", "backup file is not available")
 	}
-	return Download{File: file, Info: info, Name: item.ID + model.Extension(item.DBType)}, nil
+	return Download{File: file, Info: info, Name: downloadName(item)}, nil
+}
+
+func downloadName(item model.Backup) string {
+	name := filepath.Base(item.RelativePath)
+	if name == "." || name == string(filepath.Separator) || strings.ContainsAny(name, "\"\r\n\\") {
+		return item.ID + model.Extension(item.DBType)
+	}
+	return name
 }
 
 func (j *Jobs) mustGet(ctx context.Context, id string) (model.Backup, error) {

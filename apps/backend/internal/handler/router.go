@@ -27,6 +27,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", h.Login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.Logout)
 	mux.HandleFunc("GET /api/v1/auth/session", h.Session)
+	mux.HandleFunc("POST /api/v1/auth/unlock", h.Unlock)
 	mux.HandleFunc("PUT /api/v1/auth/password", h.Password)
 	mux.HandleFunc("GET /api/v1/dashboard", h.Dashboard)
 	mux.HandleFunc("GET /api/v1/sources", h.ListSources)

@@ -22,6 +22,7 @@
 
       <form class="space-y-3" @submit.prevent="changePassword">
         <h2 class="text-sm font-medium">Administrator password</h2>
+        <p class="text-xs text-zinc-500">Backups created after this change use the new password. Older encrypted files still open only with the previous password.</p>
         <label class="block text-sm">Current<input v-model="passwords.current" type="password" autocomplete="current-password" class="field"></label>
         <label class="block text-sm">New<input v-model="passwords.next" type="password" autocomplete="new-password" class="field"></label>
         <label class="block text-sm">Confirm<input v-model="passwords.confirm" type="password" autocomplete="new-password" class="field"></label>

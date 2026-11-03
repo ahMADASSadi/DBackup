@@ -2,7 +2,7 @@
   <section>
     <header class="mb-6">
       <h1 class="text-xl font-semibold">Backups</h1>
-      <p class="text-sm text-zinc-500">Retained versions and upload state.</p>
+      <p class="text-sm text-zinc-500">Retained versions and upload state. New backups are gzip-compressed and encrypted with your login password. The download is that sealed file. Decrypt it with <span class="font-mono">dbackup decrypt</span> before a restore. Older backups are unchanged.</p>
     </header>
     <form class="mb-4 grid gap-3 md:grid-cols-4" @submit.prevent="load">
       <label class="text-sm">Source

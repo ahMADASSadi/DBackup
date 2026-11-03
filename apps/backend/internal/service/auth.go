@@ -20,10 +20,11 @@ type Auth struct {
 	Store *repository.Store
 	Dummy string
 	TTL   time.Duration
+	Vault *security.Vault
 }
 
 // NewAuth prepares a dummy hash so missing accounts do not return early.
-func NewAuth(store *repository.Store, ttl time.Duration) (*Auth, error) {
+func NewAuth(store *repository.Store, ttl time.Duration, vault *security.Vault) (*Auth, error) {
 	dummy, err := security.DummyHash()
 	if err != nil {
 		return nil, err
@@ -31,7 +32,10 @@ func NewAuth(store *repository.Store, ttl time.Duration) (*Auth, error) {
 	if ttl < time.Minute {
 		ttl = 12 * time.Hour
 	}
-	return &Auth{Store: store, Dummy: dummy, TTL: ttl}, nil
+	if vault == nil {
+		vault = security.NewVault()
+	}
+	return &Auth{Store: store, Dummy: dummy, TTL: ttl, Vault: vault}, nil
 }
 
 // Bootstrap creates the administrator or applies a one-shot password reset.
@@ -125,6 +129,7 @@ func (a *Auth) Login(ctx context.Context, username, password, ip string) (LoginR
 	if _, err := a.Store.CreateSession(ctx, tokenHash, csrf, expires); err != nil {
 		return LoginResult{}, err
 	}
+	a.Vault.Set(password)
 	_ = a.Store.InsertAudit(ctx, username, "auth.login", "admin", admin.ID, "{}")
 	return LoginResult{Username: username, Token: token, CSRF: csrf, ExpiresAt: expires}, nil
 }
@@ -143,6 +148,7 @@ func (a *Auth) Session(ctx context.Context, token string) (repository.Session, s
 	}
 	if time.Now().After(session.ExpiresAt) {
 		_ = a.Store.DeleteSession(ctx, session.ID)
+		a.dropIfIdle(ctx)
 		return repository.Session{}, "", E(401, "unauthorized", "authentication required")
 	}
 	admin, err := a.Store.GetAdmin(ctx)
@@ -157,8 +163,29 @@ func (a *Auth) Logout(ctx context.Context, sessionID, username string) error {
 	if err := a.Store.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
+	a.dropIfIdle(ctx)
 	_ = a.Store.InsertAudit(ctx, username, "auth.logout", "admin", sessionID, "{}")
 	return nil
+}
+
+// Unlock stores the administrator password in memory after checking it.
+func (a *Auth) Unlock(ctx context.Context, password string) error {
+	admin, err := a.Store.GetAdmin(ctx)
+	if err != nil {
+		return err
+	}
+	if !security.VerifyPassword(password, admin.PasswordHash) {
+		return E(401, "unauthorized", "invalid password")
+	}
+	a.Vault.Set(password)
+	return nil
+}
+
+func (a *Auth) dropIfIdle(ctx context.Context) {
+	n, err := a.Store.CountLiveSessions(ctx, time.Now())
+	if err == nil && n == 0 {
+		a.Vault.Clear()
+	}
 }
 
 // ChangePassword replaces the administrator password and invalidates sessions.
@@ -186,6 +213,7 @@ func (a *Auth) ChangePassword(ctx context.Context, current, next string) error {
 	if err := a.Store.DeleteAllSessions(ctx); err != nil {
 		return err
 	}
+	a.Vault.Clear()
 	_ = a.Store.InsertAudit(ctx, admin.Username, "admin.password_change", "admin", admin.ID, "{}")
 	return nil
 }

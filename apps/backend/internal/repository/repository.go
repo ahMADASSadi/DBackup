@@ -149,6 +149,12 @@ func (s *Store) DeleteAllSessions(ctx context.Context) error {
 	return err
 }
 
+func (s *Store) CountLiveSessions(ctx context.Context, now time.Time) (int, error) {
+	var n int
+	err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM sessions WHERE expires_at > ?`, formatTime(now)).Scan(&n)
+	return n, err
+}
+
 func (s *Store) CountFailedLogins(ctx context.Context, ip, username string, since time.Time) (ipCount, userCount int, err error) {
 	sinceText := formatTime(since)
 	if err = s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND success = 0 AND attempted_at >= ?`, ip, sinceText).Scan(&ipCount); err != nil {

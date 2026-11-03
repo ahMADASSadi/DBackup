@@ -9,8 +9,9 @@ Errors use `{"error":{"code":"...","message":"..."}}`.
 | GET | `/health` | Public. `{"status":"ok"}` or 503. No diagnostics. |
 | POST | `/auth/login` | Sets the session cookie and returns `csrf_token`. |
 | POST | `/auth/logout` | Deletes the session. |
-| GET | `/auth/session` | `{authenticated, username, csrf_token}`. |
-| PUT | `/auth/password` | Requires the current password. Clears sessions. |
+| GET | `/auth/session` | `{authenticated, username, csrf_token, encryption_unlocked}`. |
+| POST | `/auth/unlock` | Checks the administrator password and holds it in memory. Returns `{authenticated, encryption_unlocked}`. |
+| PUT | `/auth/password` | Requires the current password. Clears sessions. Older encrypted backups still need the previous password. |
 | GET | `/dashboard` | Counts, recent jobs, last success, next run, usage. |
 | GET | `/sources` | `{items:[...]}`. Passwords are never returned. |
 | POST | `/sources` | Creates a source. |
@@ -21,7 +22,7 @@ Errors use `{"error":{"code":"...","message":"..."}}`.
 | POST | `/sources/{id}/backups` | Returns `202` and a backup record. Optional `{"upload":true}`. |
 | GET | `/backups?source_id&status&from&to&limit&offset` | Page of history. `from` and `to` are RFC3339. |
 | GET | `/backups/{id}` | One record, including upload status when present. |
-| GET | `/backups/{id}/download` | The completed file. |
+| GET | `/backups/{id}/download` | The completed file. New backups are sealed `.dbk` archives. |
 | DELETE | `/backups/{id}?force=true` | Refuses to delete the only completed backup unless `force=true`. |
 | POST | `/backups/{id}/retry` | Re-queues a failed dump that published no file. |
 | POST | `/backups/{id}/retry-upload` | Re-queues a failed upload. |

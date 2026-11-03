@@ -141,6 +141,12 @@ func (s *Store) ListPendingBackups(ctx context.Context, limit int) ([]model.Back
 	return out, rows.Err()
 }
 
+func (s *Store) ReleaseBackup(ctx context.Context, id string) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE backups SET status = 'pending', started_at = NULL, completed_at = NULL
+		WHERE id = ? AND status = 'running' AND relative_path = ''`, id)
+	return err
+}
+
 func (s *Store) ClaimBackup(ctx context.Context, id string) (bool, error) {
 	res, err := s.DB.ExecContext(ctx, `UPDATE backups SET status = 'running', started_at = ? WHERE id = ? AND status = 'pending'`, formatTime(time.Now()), id)
 	if err != nil {

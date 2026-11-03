@@ -13,6 +13,7 @@ func (j *Jobs) loop(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
+		j.lockIfIdle(ctx)
 		j.dispatch(ctx)
 		select {
 		case <-ctx.Done():
@@ -73,7 +74,10 @@ func (j *Jobs) dispatch(ctx context.Context) {
 		return
 	}
 	active := runningBackups + runningUploads
-	if active < limit {
+	if active < limit && !j.Vault.Unlocked() {
+		j.noteLocked(ctx)
+	}
+	if active < limit && j.Vault.Unlocked() {
 		pending, err := j.Store.ListPendingBackups(ctx, 20)
 		if err != nil {
 			j.Log.Error("list pending backups", "error", err.Error())
@@ -190,16 +194,46 @@ func (j *Jobs) executeBackup(id string) {
 		j.failBackup(id, "temporary backup file could not be created")
 		return
 	}
-	rel := src.ID + "/" + id + ext
+	rel := src.ID + "/" + id + model.EncryptedExt
 	version, err := j.Engine.Dump(ctx, src, password, temp, j.Files.Root())
 	if err != nil {
 		_ = j.Files.RemoveTemp(temp)
 		j.failBackup(id, security.Truncate(security.Redact(err.Error(), password), 400))
 		return
 	}
-	size, sum, err := j.Files.Publish(temp, rel)
+	adminPassword, ok := j.Vault.Password()
+	if !ok {
+		_ = j.Files.RemoveTemp(temp)
+		j.releaseBackup(id)
+		return
+	}
+	sealed, err := j.Files.CreateTemp(id, model.EncryptedExt)
 	if err != nil {
 		_ = j.Files.RemoveTemp(temp)
+		j.failBackup(id, "temporary backup file could not be created")
+		return
+	}
+	// SealFile creates its destination exclusively, so the placeholder must be removed first.
+	if err := j.Files.RemoveTemp(sealed); err != nil {
+		_ = j.Files.RemoveTemp(temp)
+		j.failBackup(id, "temporary backup file could not be created")
+		return
+	}
+	if err := security.SealFile(sealed, temp, adminPassword); err != nil {
+		_ = j.Files.RemoveTemp(temp)
+		_ = j.Files.RemoveTemp(sealed)
+		if !j.Vault.Unlocked() {
+			j.releaseBackup(id)
+			return
+		}
+		j.Log.Error("seal backup", "backup_id", id, "error", err.Error())
+		j.failBackup(id, "backup file could not be sealed")
+		return
+	}
+	_ = j.Files.RemoveTemp(temp)
+	size, sum, err := j.Files.Publish(sealed, rel)
+	if err != nil {
+		_ = j.Files.RemoveTemp(sealed)
 		_ = j.Files.Remove(rel)
 		j.failBackup(id, "backup file could not be published")
 		return
@@ -268,6 +302,38 @@ func (j *Jobs) decryptSource(src model.Source) (string, error) {
 		return "", nil
 	}
 	return j.Cipher.Decrypt("source:"+src.ID, src.PasswordCipher)
+}
+
+func (j *Jobs) lockIfIdle(ctx context.Context) {
+	if j.Vault == nil || !j.Vault.Unlocked() {
+		return
+	}
+	n, err := j.Store.CountLiveSessions(ctx, time.Now())
+	if err == nil && n == 0 {
+		j.Vault.Clear()
+	}
+}
+
+func (j *Jobs) noteLocked(ctx context.Context) {
+	pending, err := j.Store.ListPendingBackups(ctx, 1)
+	if err != nil || len(pending) == 0 {
+		return
+	}
+	j.lockMu.Lock()
+	defer j.lockMu.Unlock()
+	if time.Since(j.lockNote) < time.Minute {
+		return
+	}
+	j.lockNote = time.Now()
+	j.Log.Info("backup encryption is locked until an administrator logs in")
+}
+
+func (j *Jobs) releaseBackup(id string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := j.Store.ReleaseBackup(ctx, id); err != nil {
+		j.Log.Error("release backup", "backup_id", id, "error", err.Error())
+	}
 }
 
 func (j *Jobs) failBackup(id, summary string) {

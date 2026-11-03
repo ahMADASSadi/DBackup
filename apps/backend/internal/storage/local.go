@@ -253,7 +253,7 @@ func syncFile(path string) error {
 
 func validExt(ext string) bool {
 	switch ext {
-	case ".dump", ".sql", ".db":
+	case ".dump", ".sql", ".db", ".dbk":
 		return true
 	default:
 		return false

@@ -21,6 +21,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		os.Exit(healthcheck())
 	}
+	if len(os.Args) > 1 && os.Args[1] == "decrypt" {
+		os.Exit(decrypt(os.Args[2:]))
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

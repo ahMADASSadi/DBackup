@@ -82,7 +82,8 @@ func New(cfg config.Config, log *slog.Logger) (*App, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	auth, err := service.NewAuth(store, cfg.SessionTTL)
+	vault := security.NewVault()
+	auth, err := service.NewAuth(store, cfg.SessionTTL, vault)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -109,7 +110,7 @@ func New(cfg config.Config, log *slog.Logger) (*App, error) {
 		log.Info("backup tool", "tool", "mysqldump", "version", tools.MySQLDump)
 	}
 	objects := storage.S3{Resolver: security.SystemResolver{}}
-	jobs := service.NewJobs(store, engine, files, objects, cipher, log, cfg.MaxConcurrentBackups, cfg.BackupTimeout, cfg.S3AllowInsecure)
+	jobs := service.NewJobs(store, engine, files, objects, cipher, log, cfg.MaxConcurrentBackups, cfg.BackupTimeout, cfg.S3AllowInsecure, vault)
 	api := &handler.Handler{
 		Auth: auth,
 		Catalog: &service.Catalog{

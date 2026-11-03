@@ -17,6 +17,7 @@ import (
 
 	"dbackup/internal/app"
 	"dbackup/internal/config"
+	"dbackup/internal/security"
 
 	_ "modernc.org/sqlite"
 )
@@ -128,8 +129,12 @@ func TestAuthBackupAndSecretRedaction(t *testing.T) {
 		t.Fatalf("download %d", download.StatusCode)
 	}
 	payload, _ := io.ReadAll(download.Body)
+	sealed := filepath.Join(t.TempDir(), "backup.dbk")
+	if err := os.WriteFile(sealed, payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	restored := filepath.Join(t.TempDir(), "restored.db")
-	if err := os.WriteFile(restored, payload, 0o600); err != nil {
+	if err := security.OpenFile(restored, sealed, "correct-horse-battery"); err != nil {
 		t.Fatal(err)
 	}
 	check, err := sql.Open("sqlite", "file:"+restored+"?mode=ro")

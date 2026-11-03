@@ -66,6 +66,18 @@
         <button type="button" class="text-sm" @click="signOut">Sign out</button>
       </div>
       <main class="mx-auto max-w-6xl px-4 py-6 md:px-8">
+        <form
+          v-if="auth.ready.value && auth.user.value && !auth.unlocked.value"
+          class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950"
+          @submit.prevent="submitUnlock"
+        >
+          <p class="text-sm">Backup encryption is locked. Enter your password to resume backups.</p>
+          <p v-if="unlockError" class="mt-2 text-sm text-red-700 dark:text-red-300" role="alert">{{ unlockError }}</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <input v-model="unlockPassword" type="password" autocomplete="current-password" required class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950" placeholder="Password">
+            <button type="submit" class="rounded-md bg-emerald-700 px-3 py-2 text-sm text-white" :disabled="unlocking">{{ unlocking ? 'Unlocking…' : 'Unlock' }}</button>
+          </div>
+        </form>
         <slot />
       </main>
     </div>
@@ -77,6 +89,9 @@ const auth = useAuth()
 const theme = useTheme()
 const colors = useColorScheme()
 const route = useRoute()
+const unlockPassword = ref('')
+const unlockError = ref('')
+const unlocking = ref(false)
 const items = [
   { to: '/', label: 'Dashboard' },
   { to: '/sources', label: 'Sources' },
@@ -92,5 +107,18 @@ function active(path: string) {
 async function signOut() {
   await auth.logout()
   await navigateTo('/login')
+}
+
+async function submitUnlock() {
+  unlockError.value = ''
+  unlocking.value = true
+  try {
+    await auth.unlock(unlockPassword.value)
+    unlockPassword.value = ''
+  } catch (err) {
+    unlockError.value = err instanceof Error ? err.message : 'Unlock failed'
+  } finally {
+    unlocking.value = false
+  }
 }
 </script>

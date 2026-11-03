@@ -32,11 +32,31 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.setSessionCookie(w, result.Token, result.ExpiresAt)
+	if h.Jobs != nil {
+		h.Jobs.Poke()
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"authenticated": true,
-		"username":      result.Username,
-		"csrf_token":    result.CSRF,
+		"authenticated":       true,
+		"username":            result.Username,
+		"csrf_token":          result.CSRF,
+		"encryption_unlocked": true,
 	})
+}
+
+func (h *Handler) Unlock(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, err)
+		return
+	}
+	if err := h.Auth.Unlock(r.Context(), req.Password); err != nil {
+		writeErr(w, err)
+		return
+	}
+	if h.Jobs != nil {
+		h.Jobs.Poke()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"authenticated": true, "encryption_unlocked": true})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +81,12 @@ func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"authenticated": true, "username": username, "csrf_token": session.CSRFSecret})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"authenticated":       true,
+		"username":            username,
+		"csrf_token":          session.CSRFSecret,
+		"encryption_unlocked": h.Auth.Vault.Unlocked(),
+	})
 }
 
 func (h *Handler) Password(w http.ResponseWriter, r *http.Request) {
