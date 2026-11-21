@@ -24,18 +24,18 @@ html {
   min-height: 100%;
   background-color: #e8eef2;
   background-image:
-    radial-gradient(96rem 72rem at 10% 6%, rgb(var(--p-300) / 0.9) 0%, rgb(var(--p-300) / 0.28) 46%, transparent 82%),
-    radial-gradient(88rem 66rem at 94% 0%, rgb(var(--p-500) / 0.5) 0%, rgb(var(--p-500) / 0.16) 48%, transparent 80%),
-    radial-gradient(84rem 64rem at 50% 108%, rgb(var(--p-200) / 0.78) 0%, rgb(var(--p-200) / 0.22) 50%, transparent 82%);
+    radial-gradient(69rem 45rem at 10% 6%, rgb(var(--p-300) / 0.9) 0%, rgb(var(--p-300) / 0.28) 46%, transparent 82%),
+    radial-gradient(62rem 40rem at 94% 0%, rgb(var(--p-500) / 0.5) 0%, rgb(var(--p-500) / 0.16) 48%, transparent 80%),
+    radial-gradient(59rem 38rem at 50% 108%, rgb(var(--p-200) / 0.78) 0%, rgb(var(--p-200) / 0.22) 50%, transparent 82%);
   background-attachment: fixed;
 }
 
 html.dark {
   background-color: #07080c;
   background-image:
-    radial-gradient(96rem 72rem at 8% 4%, rgb(var(--p-600) / 0.55) 0%, rgb(var(--p-600) / 0.18) 46%, transparent 82%),
-    radial-gradient(88rem 66rem at 96% 2%, rgb(var(--p-400) / 0.32) 0%, rgb(var(--p-400) / 0.1) 48%, transparent 80%),
-    radial-gradient(84rem 64rem at 48% 110%, rgb(var(--p-800) / 0.7) 0%, rgb(var(--p-800) / 0.22) 50%, transparent 82%);
+    radial-gradient(69rem 45rem at 8% 4%, rgb(var(--p-600) / 0.55) 0%, rgb(var(--p-600) / 0.18) 46%, transparent 82%),
+    radial-gradient(62rem 40rem at 96% 2%, rgb(var(--p-400) / 0.32) 0%, rgb(var(--p-400) / 0.1) 48%, transparent 80%),
+    radial-gradient(59rem 38rem at 48% 110%, rgb(var(--p-800) / 0.7) 0%, rgb(var(--p-800) / 0.22) 50%, transparent 82%);
 }
 
 body {
